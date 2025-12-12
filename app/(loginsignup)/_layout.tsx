@@ -4,21 +4,18 @@ export default function _layout() {
   return (
     <Stack>
         <Stack.Screen
-          name="index"
+          name="login"
           options={{
             headerShown: false,
           }}
         />
         <Stack.Screen
-        name='(home)'
-        options = {{
-          headerShown: false,
-        }}/>
-        <Stack.Screen
-        name='(loginsignup)'
-        options={
-          {headerShown:false}
-        }/>
+          name="signup"
+          options={{
+            headerShown: false,
+          }}
+        />
+       
     </Stack>
   )
 }
