@@ -41,8 +41,8 @@ export default function index() {
       <FlatList
         data={cardData}
         keyExtractor={(item) => item.id}
-        numColumns={2} // ← IMPORTANT (2-column grid)
-        columnWrapperStyle={styles.row} // spacing between columns
+        numColumns={2}
+        columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
           <CustomCard
             image={item.image}
