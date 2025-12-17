@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -8,15 +8,17 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { uploadBase64Image } from '../../utils/serverConnection';
+} from "react-native";
+
+import { uploadImageToServer } from "../../utils/serverConnection";
 
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [facing, setFacing] = useState<'front' | 'back'>('back');
+  const [facing, setFacing] = useState<"front" | "back">("back");
   const [uploading, setUploading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
 
   const cameraRef = useRef<any>(null);
 
@@ -24,7 +26,7 @@ export default function CameraScreen() {
     if (!permission) requestPermission();
   }, [permission]);
 
-  // 📸 Capture only
+  // 📸 Capture image
   const takePicture = async () => {
     try {
       if (!cameraRef.current) return;
@@ -34,26 +36,36 @@ export default function CameraScreen() {
         base64: true,
       });
 
+      console.log("📸 Image captured");
+      console.log("📸 Base64 length:", photo.base64?.length);
+
       setPhotoUri(photo.uri);
-      setPhotoBase64(photo.base64);
+      setPhotoBase64(photo.base64 ?? null);
     } catch (err) {
-      console.error('Capture failed', err);
+      console.error("❌ Capture failed", err);
     }
   };
 
-  // 🚀 Upload only when user confirms
+  // 🚀 Send image to backend (BASE64 ONLY)
   const sendImage = async () => {
-    if (!photoBase64) return;
+    if (!photoBase64) {
+      alert("No image data available");
+      return;
+    }
 
     try {
       setUploading(true);
-      await uploadBase64Image(photoBase64);
-      console.log('Image sent successfully');
-      alert('Image sent successfully!');
-      resetCamera();
+
+      console.log("📤 Sending base64 length:", photoBase64.length);
+
+      const response = await uploadImageToServer(photoBase64);
+
+      console.log("✅ Prediction:", response);
+
+      setResult(response?.disease || "Unknown");
     } catch (err) {
-      console.error('Upload failed', err);
-      alert('Upload failed');
+      console.error("❌ Upload failed", err);
+      alert("Upload failed");
     } finally {
       setUploading(false);
     }
@@ -62,6 +74,7 @@ export default function CameraScreen() {
   const resetCamera = () => {
     setPhotoUri(null);
     setPhotoBase64(null);
+    setResult(null);
   };
 
   if (!permission) return <Text>Requesting permissions...</Text>;
@@ -70,8 +83,11 @@ export default function CameraScreen() {
     return (
       <View style={styles.center}>
         <Text>No access to camera</Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.permissionBtn}>
-          <Text style={{ color: '#fff' }}>Allow Camera</Text>
+        <TouchableOpacity
+          onPress={requestPermission}
+          style={styles.permissionBtn}
+        >
+          <Text style={{ color: "#fff" }}>Allow Camera</Text>
         </TouchableOpacity>
       </View>
     );
@@ -85,27 +101,34 @@ export default function CameraScreen() {
         <Image source={{ uri: photoUri }} style={styles.preview} />
       )}
 
-      {/* CONTROLS */}
       <View style={styles.controls}>
-
         {/* Flip Camera */}
         {!photoUri && (
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
+            onPress={() =>
+              setFacing(facing === "back" ? "front" : "back")
+            }
           >
-            <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+            <Ionicons
+              name="camera-reverse-outline"
+              size={28}
+              color="#fff"
+            />
           </TouchableOpacity>
         )}
 
-        {/* CAPTURE BUTTON */}
+        {/* Capture */}
         {!photoUri && (
-          <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+          <TouchableOpacity
+            style={styles.captureButton}
+            onPress={takePicture}
+          >
             <View style={styles.innerCircle} />
           </TouchableOpacity>
         )}
 
-        {/* PREVIEW ACTIONS */}
+        {/* Preview Actions */}
         {photoUri && (
           <View style={styles.previewActions}>
             <TouchableOpacity
@@ -133,77 +156,74 @@ export default function CameraScreen() {
           </View>
         )}
 
-        {!photoUri && <View style={{ width: 40 }} />}
+        {/* Prediction Result */}
+        {result && (
+          <View style={styles.resultBox}>
+            <Text style={styles.resultText}>Disease</Text>
+            <Text style={styles.resultValue}>{result}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: "#000" },
   camera: { flex: 1 },
   preview: { flex: 1 },
-
   controls: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 40,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
-
   captureButton: {
     width: 75,
     height: 75,
     borderRadius: 40,
     borderWidth: 4,
-    borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
-
   innerCircle: {
     width: 55,
     height: 55,
     borderRadius: 30,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-
-  previewActions: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-
+  previewActions: { flexDirection: "row", gap: 20 },
   actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: 30,
     gap: 8,
   },
-
-  retake: {
-    backgroundColor: '#ff3b30',
-  },
-
-  send: {
-    backgroundColor: '#34c759',
-  },
-
-  actionText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-
+  retake: { backgroundColor: "#ff3b30" },
+  send: { backgroundColor: "#34c759" },
+  actionText: { color: "#fff", fontWeight: "600" },
   iconButton: { padding: 10 },
-
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
   permissionBtn: {
     marginTop: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
+  },
+  resultBox: {
+    marginTop: 20,
+    backgroundColor: "#111",
+    padding: 16,
+    borderRadius: 12,
+  },
+  resultText: { color: "#aaa", fontSize: 14 },
+  resultValue: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
