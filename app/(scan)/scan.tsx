@@ -28,9 +28,9 @@ export default function CameraScreen() {
 
   // 📸 Capture image
   const takePicture = async () => {
-    try {
-      if (!cameraRef.current) return;
+    if (!cameraRef.current) return;
 
+    try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.8,
         base64: true,
@@ -38,7 +38,7 @@ export default function CameraScreen() {
 
       setPhotoUri(photo.uri);
       setPhotoBase64(photo.base64 ?? null);
-      setProcessedImage(null); // reset old result
+      setProcessedImage(null); // reset previous result
     } catch (err) {
       console.error("❌ Capture failed", err);
     }
@@ -47,21 +47,24 @@ export default function CameraScreen() {
   // 🚀 Send image to backend
   const sendImage = async () => {
     if (!photoBase64) {
-      alert("No image data available");
+      alert("No image captured");
       return;
     }
 
     try {
       setUploading(true);
 
-      const response = await uploadImageToServer(photoBase64);
-      console.log("✅ Upload successful", response);
+      const response = await uploadImageToServer(
+        `data:image/jpeg;base64,${photoBase64}`
+      );
 
-      // ✅ show processed image
+      console.log("✅ Backend response:", response);
+
+      // ✅ display processed image
       setProcessedImage(response.image);
     } catch (err) {
       console.error("❌ Upload failed", err);
-      alert("Upload failed");
+      alert("Processing failed");
     } finally {
       setUploading(false);
     }
@@ -95,30 +98,30 @@ export default function CameraScreen() {
         <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
       ) : (
         <Image
-          source={{ uri: processedImage || photoUri }}
+          source={{ uri: processedImage ?? photoUri }}
           style={styles.preview}
         />
       )}
 
       <View style={styles.controls}>
         {!photoUri && (
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() =>
-              setFacing(facing === "back" ? "front" : "back")
-            }
-          >
-            <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-        )}
+          <>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() =>
+                setFacing(facing === "back" ? "front" : "back")
+              }
+            >
+              <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
+            </TouchableOpacity>
 
-        {!photoUri && (
-          <TouchableOpacity
-            style={styles.captureButton}
-            onPress={takePicture}
-          >
-            <View style={styles.innerCircle} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.captureButton}
+              onPress={takePicture}
+            >
+              <View style={styles.innerCircle} />
+            </TouchableOpacity>
+          </>
         )}
 
         {photoUri && (

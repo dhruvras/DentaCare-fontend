@@ -6,24 +6,16 @@ export const uploadImageToServer = async (base64Image) => {
   try {
     const response = await axios.post(
       `${SERVER_URL}/predict`,
+      { image: base64Image },
       {
-        image: base64Image, // 👈 send base64 directly
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: 15000, // ⛑️ prevents infinite loading
+        headers: { "Content-Type": "application/json" },
+        timeout: 20000,
       }
     );
 
-    // ✅ Axios auto-parses JSON
     return response.data;
   } catch (error) {
-    console.error(
-      "❌ Upload failed:",
-      error.response?.data || error.message
-    );
+    console.error("❌ Upload failed:", error.message);
     throw error;
   }
 };
