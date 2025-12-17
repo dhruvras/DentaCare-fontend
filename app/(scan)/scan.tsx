@@ -16,9 +16,9 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
 
   const cameraRef = useRef<any>(null);
 
@@ -36,17 +36,15 @@ export default function CameraScreen() {
         base64: true,
       });
 
-      console.log("📸 Image captured");
-      console.log("📸 Base64 length:", photo.base64?.length);
-
       setPhotoUri(photo.uri);
       setPhotoBase64(photo.base64 ?? null);
+      setProcessedImage(null); // reset old result
     } catch (err) {
       console.error("❌ Capture failed", err);
     }
   };
 
-  // 🚀 Send image to backend (BASE64 ONLY)
+  // 🚀 Send image to backend
   const sendImage = async () => {
     if (!photoBase64) {
       alert("No image data available");
@@ -56,13 +54,11 @@ export default function CameraScreen() {
     try {
       setUploading(true);
 
-      console.log("📤 Sending base64 length:", photoBase64.length);
-
       const response = await uploadImageToServer(photoBase64);
+      console.log("✅ Upload successful", response);
 
-      console.log("✅ Prediction:", response);
-
-      setResult(response?.disease || "Unknown");
+      // ✅ show processed image
+      setProcessedImage(response.image);
     } catch (err) {
       console.error("❌ Upload failed", err);
       alert("Upload failed");
@@ -74,7 +70,7 @@ export default function CameraScreen() {
   const resetCamera = () => {
     setPhotoUri(null);
     setPhotoBase64(null);
-    setResult(null);
+    setProcessedImage(null);
   };
 
   if (!permission) return <Text>Requesting permissions...</Text>;
@@ -98,11 +94,13 @@ export default function CameraScreen() {
       {!photoUri ? (
         <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
       ) : (
-        <Image source={{ uri: photoUri }} style={styles.preview} />
+        <Image
+          source={{ uri: processedImage || photoUri }}
+          style={styles.preview}
+        />
       )}
 
       <View style={styles.controls}>
-        {/* Flip Camera */}
         {!photoUri && (
           <TouchableOpacity
             style={styles.iconButton}
@@ -110,15 +108,10 @@ export default function CameraScreen() {
               setFacing(facing === "back" ? "front" : "back")
             }
           >
-            <Ionicons
-              name="camera-reverse-outline"
-              size={28}
-              color="#fff"
-            />
+            <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
           </TouchableOpacity>
         )}
 
-        {/* Capture */}
         {!photoUri && (
           <TouchableOpacity
             style={styles.captureButton}
@@ -128,7 +121,6 @@ export default function CameraScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Preview Actions */}
         {photoUri && (
           <View style={styles.previewActions}>
             <TouchableOpacity
@@ -153,14 +145,6 @@ export default function CameraScreen() {
                 </>
               )}
             </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Prediction Result */}
-        {result && (
-          <View style={styles.resultBox}>
-            <Text style={styles.resultText}>Disease</Text>
-            <Text style={styles.resultValue}>{result}</Text>
           </View>
         )}
       </View>
@@ -213,17 +197,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
-  },
-  resultBox: {
-    marginTop: 20,
-    backgroundColor: "#111",
-    padding: 16,
-    borderRadius: 12,
-  },
-  resultText: { color: "#aaa", fontSize: 14 },
-  resultValue: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
   },
 });
